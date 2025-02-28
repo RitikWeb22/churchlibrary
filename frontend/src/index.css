@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  /* backgroundcolor: "oklch(70% 0.15 280)"; */
+  /* 
+  background-color: rgb(255, 255, 255) !important; /* White */
+  /* color: #000000 !important; Black */
+}
+html,
+body {
+  height: 100%;
+  width: 100%;
+}
+/* Remove or reduce the border around thumbnails */
+.carousel .thumb {
+  border: 1px solid transparent; /* Adjust as needed, or set to none */
+}
+
+.carousel .thumb.selected,
+.carousel .thumb:hover {
+  border: 1px solid #ccc; /* Change border color and width as desired */
+}
+/* Hide scrollbar in Chrome, Safari, and Edge */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar in Firefox */
+.scrollbar-hide {
+  -ms-overflow-style: none; /* IE 10+ */
+  scrollbar-width: none; /* Firefox */
+}
+/* Marquee.css */
+
+/* Container with fixed height & hidden overflow */
+.marquee-container {
+  height: 12rem; /* or any height you like */
+  overflow: hidden;
+  position: relative;
+}
+
+/* The scrolling content */
+.marquee-content {
+  position: absolute;
+  animation: verticalMarquee 10s linear infinite;
+  width: 100%;
+}
+
+/* Keyframes for vertical scrolling from bottom to top */
+@keyframes verticalMarquee {
+  0% {
+    transform: translateY(100%);
+  }
+  100% {
+    transform: translateY(-100%);
+  }
+}
+
+/* WebKit browsers */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #888;
+  border-radius: 6px;
+  border: 3px solid #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #555555;
+}
+
+/* Firefox */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: #888 #f1f1f1;
+}
+@media print {
+  /* Hide everything */
+  body * {
+    visibility: hidden !important;
+  }
+  /* Show only the invoice container */
+  #invoiceContainer,
+  #invoiceContainer * {
+    visibility: visible !important;
+  }
+  /* Force the invoice container to occupy the full page */
+  #invoiceContainer {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    background: #fff !important;
+  }
+}
