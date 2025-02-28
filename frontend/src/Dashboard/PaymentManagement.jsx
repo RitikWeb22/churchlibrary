@@ -616,12 +616,12 @@ const PaymentManagement = () => {
               <InvoiceTemplate invoiceData={invoiceData} />
             </div>
             <div className="modal-action flex gap-2">
-              <button
+              {/* <button
                 className="btn btn-primary"
                 onClick={() => window.print()}
               >
                 Print Invoice
-              </button>
+              </button> */}
               <button
                 className="btn btn-outline"
                 onClick={() => setShowInvoiceModal(false)}
