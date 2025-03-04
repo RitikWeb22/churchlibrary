@@ -87,7 +87,7 @@ const Header = () => {
   const handleProtectedClick = (e) => {
     if (!user) {
       e.preventDefault();
-      showToast("Please log in to access this page");
+      showToast("Please Login to access this page");
       navigate("/auth");
     }
     // For logged in users, allow the <details> element to toggle naturally.
@@ -131,7 +131,8 @@ const Header = () => {
               </Link>
             </li>
             <li>
-              <Link to="/church-calender" onClick={handleLinkClick}>
+              {/* Updated to lock Purchase Calendar for non-logged in users */}
+              <Link to="/church-calender" onClick={handleProtectedClick}>
                 Calender Purchase
               </Link>
             </li>
@@ -176,6 +177,24 @@ const Header = () => {
               >
                 Hindi Bible
               </Link>
+            </li>
+            <li>
+              <a
+                href="https://www.ministrybooks.org/"
+                target="_blank"
+                onClick={handleLinkClick}
+              >
+                Ministry Books
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://www.amanaliterature.in/?srsltid=AfmBOoqVIeOvHdsKm42AYOiDkMtsi26YNmIel_zmqWjOJBVSGMH3L5Em"
+                target="_blank"
+                onClick={handleLinkClick}
+              >
+                Amana Literature
+              </a>
             </li>
           </ul>
         </details>
@@ -321,7 +340,7 @@ const Header = () => {
       {/* Modern Toast Alert */}
       {isToastVisible && (
         <div className="fixed top-5 left-1/2 transform -translate-x-1/2 z-50">
-          <div className="bg-error mt-20 dark:bg-error text-white px-6 py-3 rounded shadow-lg transition-opacity duration-500">
+          <div className="bg-red-600 mt-20 dark:bg-red-600 text-xl rounded-lg text-white px-6 py-10  shadow-lg transition-opacity duration-500">
             {toastMessage}
           </div>
         </div>

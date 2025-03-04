@@ -3,14 +3,20 @@ const EventRegistration = require("../models/EventRegistration");
 
 exports.createRegistration = async (req, res) => {
     try {
-        // The form data is in req.body
-        // Instead of fullName/email/phone, we now expect `req.body.dynamicData`
+        // Extract dynamicData from request body
         const { dynamicData } = req.body;
 
-        if (!dynamicData || typeof dynamicData !== "object") {
-            return res.status(400).json({ error: "Missing or invalid dynamicData" });
+        // Validate that dynamicData is provided, is an object, and is not empty
+        if (!dynamicData || typeof dynamicData !== "object" || Object.keys(dynamicData).length === 0) {
+            return res
+                .status(400)
+                .json({ error: "Missing or invalid dynamicData. Please fill in the required fields." });
         }
 
+        // Optionally, add further validation here, e.g. check for specific required keys
+        // if (!dynamicData.email || !dynamicData.fullName) { ... }
+
+        // Create the new registration record
         const newReg = await EventRegistration.create({ dynamicData });
         res.status(201).json(newReg);
     } catch (error) {
@@ -21,7 +27,7 @@ exports.createRegistration = async (req, res) => {
 
 exports.getAllRegistrations = async (req, res) => {
     try {
-        // Return all registrations, each containing dynamicData
+        // Retrieve all registrations sorted by creation date (newest first)
         const regs = await EventRegistration.find().sort({ createdAt: -1 });
         res.json(regs);
     } catch (error) {

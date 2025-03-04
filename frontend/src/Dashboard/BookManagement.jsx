@@ -21,8 +21,6 @@ const BookManagement = () => {
   const [categories, setCategories] = useState([]);
   const [filter, setFilter] = useState("");
   const [search, setSearch] = useState("");
-
-  // For adding/removing categories
   const [newCategory, setNewCategory] = useState("");
 
   // Book modal state for add/edit
@@ -44,9 +42,6 @@ const BookManagement = () => {
   // Reference for the hidden file input (for Excel import)
   const fileInputRef = useRef(null);
 
-  // ------------------------------
-  // Fetch Data on Mount
-  // ------------------------------
   useEffect(() => {
     fetchBooks();
     fetchCategories();
@@ -80,9 +75,6 @@ const BookManagement = () => {
     }
   };
 
-  // ------------------------------
-  // Category Add & Remove
-  // ------------------------------
   const handleAddCategory = async () => {
     if (!newCategory.trim()) return;
     try {
@@ -106,9 +98,6 @@ const BookManagement = () => {
     }
   };
 
-  // ------------------------------
-  // Book Modal Logic (Add/Edit)
-  // ------------------------------
   const openModal = (book = null) => {
     setModalData(book);
     if (book) {
@@ -158,9 +147,6 @@ const BookManagement = () => {
     }
   };
 
-  // ------------------------------
-  // Delete Book Logic using Reusable Modal
-  // ------------------------------
   const handleDeleteClick = (book) => {
     setBookToDelete(book);
     setShowDeleteModal(true);
@@ -179,9 +165,6 @@ const BookManagement = () => {
     setBookToDelete(null);
   };
 
-  // ------------------------------
-  // Excel Import
-  // ------------------------------
   const handleImportBooks = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
@@ -223,9 +206,6 @@ const BookManagement = () => {
     }
   };
 
-  // ------------------------------
-  // Filtering Books (Case-Insensitive)
-  // ------------------------------
   const filteredBooks = books.filter((book) => {
     const matchFilter =
       !filter ||
@@ -236,17 +216,17 @@ const BookManagement = () => {
   });
 
   return (
-    <div className="p-6 space-y-6 bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-4 sm:p-6 lg:p-8">
       <ToastContainer position="top-right" autoClose={5000} />
 
-      <h1 className="text-4xl font-bold">📚 Book Management</h1>
+      <h1 className="text-4xl font-bold mb-6">📚 Book Management</h1>
 
       {/* Actions */}
-      <div className="flex justify-end gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4 mb-6">
         <input
           type="text"
           placeholder="Search books..."
-          className="input input-bordered w-full max-w-xs dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+          className="input input-bordered w-full sm:max-w-xs dark:bg-gray-700 dark:border-gray-600 dark:text-white"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -262,12 +242,14 @@ const BookManagement = () => {
             </option>
           ))}
         </select>
-        <button className="btn btn-primary" onClick={() => openModal()}>
-          <FaPlus className="mr-1" /> Add Book
-        </button>
-        <button className="btn btn-secondary" onClick={handleImportBooks}>
-          <FaFileImport className="mr-1" /> Import Books
-        </button>
+        <div className="flex gap-2">
+          <button className="btn btn-primary" onClick={() => openModal()}>
+            <FaPlus className="mr-1" /> Add Book
+          </button>
+          <button className="btn btn-secondary" onClick={handleImportBooks}>
+            <FaFileImport className="mr-1" /> Import Books
+          </button>
+        </div>
         {/* Hidden file input for Excel files */}
         <input
           type="file"
@@ -279,13 +261,13 @@ const BookManagement = () => {
       </div>
 
       {/* Manage Categories */}
-      <div className="mt-4 bg-white dark:bg-gray-800 p-4 rounded-md shadow">
+      <div className="mt-4 bg-white dark:bg-gray-800 p-4 rounded-md shadow mb-6">
         <h2 className="text-2xl font-bold mb-2">Manage Categories</h2>
-        <div className="flex gap-2 mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:gap-4 mb-4">
           <input
             type="text"
             placeholder="New Category"
-            className="input input-bordered w-full max-w-xs dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            className="input input-bordered w-full sm:max-w-xs dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             value={newCategory}
             onChange={(e) => setNewCategory(e.target.value)}
           />
@@ -302,11 +284,10 @@ const BookManagement = () => {
             <li key={idx} className="flex items-center justify-between">
               <span>{cat}</span>
               <button
-                className="btn btn-sm btn-error"
+                className="btn btn-sm btn-error flex items-center gap-1"
                 onClick={() => handleRemoveCategory(cat)}
               >
-                <FaTrash className="mr-1" />
-                Remove
+                <FaTrash className="mr-1" /> Remove
               </button>
             </li>
           ))}

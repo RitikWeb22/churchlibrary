@@ -13,41 +13,46 @@ const BookCard = ({ book }) => {
     navigate(`/books/${bookId}`);
   };
 
-  // Helper to show animated stock status
+  // Helper to show animated stock status based on the following:
+  // - If stock > 10, no message.
+  // - If stock <= 10, then:
+  //    - If category is "morning revival" and stock === 0, show "Books are out of stocks!"
+  //    - If category is "library", show "Book is in circulation!"
+  //    - Otherwise, show "Few copies are available!"
   const renderStockMessage = () => {
-    if (book.stock === 0) {
-      // If stock = 0, check category
-      const categoryLower = (book.category || "").toLowerCase();
-      if (categoryLower === "library") {
-        // Out-of-stock library book => "In Circulation!"
-        return (
-          <div className="mt-8 animate-bounce">
-            <span className="text-red-600 dark:text-red-400 font-semibold">
-              In Circulation!
-            </span>
-          </div>
-        );
-      } else {
-        // Out-of-stock for any other category => "Out of Stock!"
-        return (
-          <div className="mt-8 animate-bounce">
-            <span className="text-red-600 dark:text-red-400 font-semibold">
-              Out of Stock!
-            </span>
-          </div>
-        );
-      }
-    } else if (book.stock <= 10) {
+    if (book.stock > 10) {
+      return null;
+    }
+
+    const categoryLower = (book.category || "").toLowerCase();
+
+    if (categoryLower === "morning revival" && book.stock === 0) {
       return (
-        <div className="mt-8 animate-pulse">
-          <span className="text-yellow-600 dark:text-yellow-400 font-semibold">
-            Limited Stock! Hurry up!
+        <div className="mt-8 animate-bounce">
+          <span className="text-red-600 dark:text-red-400 font-semibold">
+            Books are out of stocks!
           </span>
         </div>
       );
     }
-    // No special message if stock is > 10
-    return null;
+
+    if (categoryLower === "library") {
+      return (
+        <div className="mt-8 animate-bounce">
+          <span className="text-red-600 dark:text-red-400 font-semibold">
+            Book is in circulation!
+          </span>
+        </div>
+      );
+    }
+
+    return (
+      <div className="mt-8 animate-pulse">
+        <span className="text-yellow-600 dark:text-yellow-400 font-semibold">
+          Few copies are available!
+        </span>
+      </div>
+    );
   };
 
   return (

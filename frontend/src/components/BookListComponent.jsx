@@ -75,7 +75,7 @@ const BookListComponent = ({ onViewBook, filters = {} }) => {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-6 min-h-screen">
       <h1 className="text-4xl font-bold mb-4">Book List</h1>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {currentBooks.map((book) => (

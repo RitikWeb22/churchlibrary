@@ -1,20 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { ToastContainer, toast } from "react-toastify";
-import { createRegistration } from "../services/api";
+import { createRegistration } from "../services/api"; // or wherever your POST function is
 import { getFormFields } from "../services/eventFieldsApi";
 import { getEventBanner } from "../services/eventBannerApi";
 import "react-toastify/dist/ReactToastify.css";
 
 const MergedRegistrationForm = () => {
-  // Theme toggle state
-  const [isDark, setIsDark] = useState(false);
-
   // Dynamic fields array from backend
   const [dynamicFields, setDynamicFields] = useState([]);
   // Holds the user’s input for each dynamic field
   const [dynamicData, setDynamicData] = useState({});
 
-  // For the advanced "Event" field: store the selected event object so we can display date/place
+  // For the advanced "Event" field: store the selected event object to show below the dropdown
   const [selectedEventObj, setSelectedEventObj] = useState(null);
 
   // Banner state
@@ -28,6 +25,7 @@ const MergedRegistrationForm = () => {
       try {
         const fields = await getFormFields();
         setDynamicFields(fields);
+
         // Initialize dynamicData with empty strings
         const initialDynamic = {};
         fields.forEach((field) => {
@@ -46,11 +44,6 @@ const MergedRegistrationForm = () => {
         let imageUrl =
           data.image ||
           "https://via.placeholder.com/1200x400?text=Event+Registration";
-        if (imageUrl && !imageUrl.startsWith("http")) {
-          const BASE_URL =
-            import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
-          imageUrl = `${BASE_URL}${imageUrl}`;
-        }
         setBanner({
           title: data.title || "Church Event Registration",
           image: imageUrl,
@@ -66,44 +59,57 @@ const MergedRegistrationForm = () => {
     fetchBanner();
   }, []);
 
-  // Handle changes for dynamic fields
+  // Handle changes for non-event fields
   const handleDynamicChange = (e, fieldLabel) => {
-    const { value } = e.target;
-    setDynamicData((prev) => ({ ...prev, [fieldLabel]: value }));
+    setDynamicData((prev) => ({ ...prev, [fieldLabel]: e.target.value }));
   };
 
   // Called when user picks an event from the "Event" dropdown
   const handleEventSelect = (field, eventName) => {
-    // 1) Update dynamicData to store the event name
-    setDynamicData((prev) => ({ ...prev, [field.label]: eventName }));
-
-    // 2) Find the matching event object from field.options
+    // 1) Find the matching event object from field.options
     const eventObj = field.options.find((opt) => opt.name === eventName);
-    setSelectedEventObj(eventObj || null);
+    // 2) Store the entire event object in dynamicData
+    if (eventObj) {
+      setDynamicData((prev) => ({ ...prev, [field.label]: eventObj }));
+      setSelectedEventObj(eventObj);
+    } else {
+      // Reset if user selects empty
+      setDynamicData((prev) => ({ ...prev, [field.label]: "" }));
+      setSelectedEventObj(null);
+    }
   };
 
   // Submit form
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // 1) Check required dynamic fields
+    // Basic validation: check required fields
     for (let field of dynamicFields) {
-      if (field.required && !dynamicData[field.label]) {
-        toast.error(`Please fill in the required field: ${field.label}`);
-        return;
+      if (field.required) {
+        const val = dynamicData[field.label];
+        // If it's an Event field, ensure we have an object
+        if (field.label === "Event" && field.type === "dropdown") {
+          if (!val || typeof val !== "object") {
+            toast.error("Please select a valid event.");
+            return;
+          }
+        } else if (!val || !val.toString().trim()) {
+          toast.error(`Please fill in the required field: ${field.label}`);
+          return;
+        }
       }
     }
 
     try {
       setLoading(true);
-      // 2) Submit the combined data as dynamicData
+      // Submit dynamicData to your backend
       await createRegistration({ dynamicData });
       toast.success("Registration submitted successfully!");
 
-      // 3) Reset dynamic data
+      // Reset form
       const resetData = {};
-      dynamicFields.forEach((field) => {
-        resetData[field.label] = "";
+      dynamicFields.forEach((f) => {
+        resetData[f.label] = "";
       });
       setDynamicData(resetData);
       setSelectedEventObj(null);
@@ -117,14 +123,10 @@ const MergedRegistrationForm = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 dark:text-gray-100 flex flex-col">
-      {/* Dark Mode Toggle */}
-
       {/* Banner Section */}
       <div
         className="relative bg-center bg-cover h-64 flex items-center justify-center"
-        style={{
-          backgroundImage: `url('${bannerImageUrl}')`,
-        }}
+        style={{ backgroundImage: `url('${bannerImageUrl}')` }}
       >
         <div className="bg-black bg-opacity-50 absolute inset-0" />
         <h1 className="relative z-10 text-4xl text-white font-bold">
@@ -141,16 +143,15 @@ const MergedRegistrationForm = () => {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {dynamicFields.map((field) => {
-              const value = dynamicData[field.label] || "";
+              const value = dynamicData[field.label];
 
-              // If it's a dropdown labeled "Event" with advanced objects
+              // If it's an Event dropdown with object-based options
               if (
                 field.type === "dropdown" &&
                 field.label === "Event" &&
                 field.options?.[0] &&
                 typeof field.options[0] === "object"
               ) {
-                // Show a dropdown with only the event name
                 return (
                   <div key={field._id}>
                     <label className="block text-lg font-medium mb-1">
@@ -160,7 +161,9 @@ const MergedRegistrationForm = () => {
                       )}
                     </label>
                     <select
-                      value={value}
+                      value={
+                        value && typeof value === "object" ? value.name : ""
+                      }
                       onChange={(e) => handleEventSelect(field, e.target.value)}
                       className="select select-bordered w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     >
@@ -172,32 +175,39 @@ const MergedRegistrationForm = () => {
                       ))}
                     </select>
 
-                    {/* Show the advanced data below the dropdown as text (read-only) */}
-                    {selectedEventObj && selectedEventObj.name === value && (
-                      <div className="mt-3 p-3 border rounded bg-gray-50 dark:bg-gray-700">
-                        {selectedEventObj.date && (
+                    {/* Show the advanced data below the dropdown if user selected an event */}
+                    {selectedEventObj &&
+                      value &&
+                      typeof value === "object" &&
+                      selectedEventObj.name === value.name && (
+                        <div className="mt-3 p-3 border rounded bg-gray-50 dark:bg-gray-700">
+                          {selectedEventObj.date && (
+                            <p>
+                              <strong>Date:</strong>{" "}
+                              {new Date(
+                                selectedEventObj.date
+                              ).toLocaleDateString()}
+                            </p>
+                          )}
                           <p>
-                            <strong>Date:</strong> {selectedEventObj.date}
+                            <strong>Place:</strong>{" "}
+                            {selectedEventObj.placeType === "physical"
+                              ? selectedEventObj.placeName || "Physical Venue"
+                              : "Online"}
                           </p>
-                        )}
-                        <p>
-                          <strong>Place:</strong>{" "}
-                          {selectedEventObj.placeType === "physical"
-                            ? selectedEventObj.placeName || "Physical Venue"
-                            : "Online"}
-                        </p>
-                        {selectedEventObj.amount && (
-                          <p>
-                            <strong>Amount:₹</strong> {selectedEventObj.amount}
-                          </p>
-                        )}
-                      </div>
-                    )}
+                          {selectedEventObj.amount && (
+                            <p>
+                              <strong>Amount:₹</strong>{" "}
+                              {selectedEventObj.amount}
+                            </p>
+                          )}
+                        </div>
+                      )}
                   </div>
                 );
               }
 
-              // If it's a normal dropdown (array of strings) or label != "Event"
+              // If it's a normal dropdown
               if (field.type === "dropdown") {
                 return (
                   <div key={field._id}>
@@ -232,7 +242,7 @@ const MergedRegistrationForm = () => {
                   </label>
                   <input
                     type={field.type === "email" ? "email" : "text"}
-                    value={value}
+                    value={value || ""}
                     onChange={(e) => handleDynamicChange(e, field.label)}
                     placeholder={`Enter ${field.label}`}
                     className="input input-bordered w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white"

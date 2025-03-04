@@ -7,11 +7,9 @@ const path = require("path");
 // Configure Multer for file uploads
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        // Files will be saved in the "uploads" folder
         cb(null, "uploads");
     },
     filename: function (req, file, cb) {
-        // Use field name, current timestamp, and original extension
         cb(
             null,
             file.fieldname + "-" + Date.now() + path.extname(file.originalname)
@@ -19,13 +17,13 @@ const storage = multer.diskStorage({
     },
 });
 
-// The "upload" middleware can handle multiple fields
 const upload = multer({ storage });
 
 // GET home configuration
 router.get("/", homeController.getHomeConfig);
 
 // PUT update home configuration – expects file fields "lightBg", "darkBg", "banner", "eventCalendarPdf", and "eventCalendarBanner"
+// The text fields (mainText, bannerTitle, sections, latestUpdates) are sent as form data.
 router.put(
     "/",
     upload.fields([

@@ -1,14 +1,11 @@
-// controllers/calendarController.js
 const Calendar = require("../models/calendarModel");
 
 const createCalendar = async (req, res) => {
     try {
         const { title, date, price, isBanner } = req.body;
-        // Validate required fields
         if (!title || !date || !price) {
             return res.status(400).json({ message: "Missing required fields" });
         }
-        // Parse the date and check
         const parsedDate = new Date(date);
         if (isNaN(parsedDate)) {
             return res.status(400).json({ message: "Invalid date format" });
@@ -24,7 +21,6 @@ const createCalendar = async (req, res) => {
         const savedCalendar = await calendar.save();
         res.status(201).json(savedCalendar);
     } catch (error) {
-        console.error("Error creating calendar:", error);
         res.status(500).json({ message: error.message });
     }
 };
@@ -50,9 +46,11 @@ const updateCalendar = async (req, res) => {
         if (req.file) {
             updateData.image = req.file.path;
         }
-        const calendar = await Calendar.findByIdAndUpdate(req.params.id, updateData, {
-            new: true,
-        });
+        const calendar = await Calendar.findByIdAndUpdate(
+            req.params.id,
+            updateData,
+            { new: true }
+        );
         if (!calendar) {
             return res.status(404).json({ message: "Calendar not found" });
         }

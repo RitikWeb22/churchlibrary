@@ -59,18 +59,9 @@ const BookDetailPage = () => {
     }
   };
 
-  const stockMessage = renderStockMessage();
-
   return (
     <div className="p-6">
       <BookDetails book={book} />
-
-      {/* Show the stock message, if any */}
-      {stockMessage && (
-        <div className="mt-4 text-lg font-semibold text-red-600 dark:text-red-400">
-          {stockMessage}
-        </div>
-      )}
     </div>
   );
 };

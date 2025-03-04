@@ -14,7 +14,6 @@ const uploadBanner = async (req, res) => {
         const banner = await Banner.create(bannerData);
         res.status(201).json(banner);
     } catch (error) {
-        console.error("Error uploading banner:", error);
         res.status(500).json({ message: error.message });
     }
 };

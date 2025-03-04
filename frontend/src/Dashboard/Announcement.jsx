@@ -98,6 +98,7 @@ const BannerAndAnnouncementManagement = () => {
   const fetchAllAnnouncements = async () => {
     try {
       const data = await getAnnouncements();
+      console.log("Fetched announcements:", data); // Debug log
       setAnnouncements(data);
     } catch (error) {
       toast.error("Failed to fetch announcements.");
@@ -374,6 +375,7 @@ const BannerAndAnnouncementManagement = () => {
                     "No link"
                   )}
                 </td>
+
                 <td>
                   {item.createdAt
                     ? new Date(item.createdAt).toLocaleDateString()

@@ -1,36 +1,41 @@
 // controller/paymentController.js
 const Payment = require("../models/Payment");
-// Destructure the Book model from your exports
 const { Book } = require("../models/bookModels");
 
-// Create a new payment (purchase or borrow)
 exports.createPayment = async (req, res) => {
     try {
-        // paymentData comes from req.body, plus screenshot from Cloudinary if any
+        // Spread req.body to get paymentData.
+        // Expecting keys: bookName, userName, contactNumber, language, paymentMethod, price, quantity, etc.
         const paymentData = { ...req.body };
 
-        // If a file was uploaded, store the Cloudinary URL
+        // Log received data for debugging purposes.
+        console.log("Received paymentData:", paymentData);
+
+        // If a file was uploaded, add its Cloudinary URL to paymentData.
         if (req.file) {
-            paymentData.screenshot = req.file.path; // This is the Cloudinary URL
+            paymentData.screenshot = req.file.path; // Cloudinary URL
         }
 
-        // If you want a custom date from the frontend, you can parse it here:
-        // paymentData.purchaseDate = paymentData.purchaseDate
-        //   ? new Date(paymentData.purchaseDate)
-        //   : new Date();
+        // Validate required fields
+        const requiredFields = ["bookName", "userName", "contactNumber", "language", "paymentMethod"];
+        for (const field of requiredFields) {
+            if (!paymentData[field]) {
+                return res.status(400).json({ message: `Missing required field: ${field}` });
+            }
+        }
 
-        // Generate invoice for cash/online purchases
-        if (
-            paymentData.paymentMethod === "cash" ||
-            paymentData.paymentMethod === "online"
-        ) {
+        // Optionally, if you expect a custom purchaseDate from the client:
+        // paymentData.purchaseDate = paymentData.purchaseDate ? new Date(paymentData.purchaseDate) : new Date();
+
+        // Generate an invoice number for cash/online purchases.
+        if (paymentData.paymentMethod === "cash" || paymentData.paymentMethod === "online") {
             paymentData.invoiceNumber = "INV-" + Date.now();
         }
 
-        // Create the payment record
+        // Create the payment record in the database.
         const payment = await Payment.create(paymentData);
 
-        // Update the book's stock if a bookId is provided
+        // If a bookId is provided, update the book's stock.
         if (paymentData.bookId) {
             const book = await Book.findById(paymentData.bookId);
             if (!book) {
@@ -38,11 +43,12 @@ exports.createPayment = async (req, res) => {
             }
 
             if (paymentData.paymentMethod === "borrow") {
-                // For borrow transactions, set stock to 0
+                // For borrow transactions, set stock to 0.
                 book.stock = 0;
             } else {
-                // For purchase transactions, subtract the purchased quantity
-                const purchasedQuantity = Number(paymentData.quantity) || 0;
+                // For purchase transactions, subtract the purchased quantity.
+                // Default to 1 if quantity is not provided.
+                const purchasedQuantity = Number(paymentData.quantity) || 1;
                 if (book.stock < purchasedQuantity) {
                     return res.status(400).json({ message: "Insufficient stock" });
                 }
@@ -54,33 +60,28 @@ exports.createPayment = async (req, res) => {
 
         res.status(201).json(payment);
     } catch (error) {
-        console.error(error);
+        console.error("Error in createPayment:", error);
         res.status(500).json({ message: "Server error" });
     }
 };
 
-// Get all payments with optional filter by payment method
 exports.getPayments = async (req, res) => {
     try {
         const { paymentMethod } = req.query;
         let filter = {};
-
         if (paymentMethod) {
             filter.paymentMethod = paymentMethod;
         }
 
-        // Make sure your Payment model has "purchaseDate" 
-        // or change this to "createdAt" if that's what you have.
+        // Using purchaseDate for sorting (or createdAt if you prefer)
         const payments = await Payment.find(filter).sort({ purchaseDate: -1 });
-
         res.status(200).json(payments);
     } catch (error) {
-        console.error(error);
+        console.error("Error in getPayments:", error);
         res.status(500).json({ message: "Server error" });
     }
 };
 
-// Delete a payment
 exports.deletePayment = async (req, res) => {
     try {
         const { id } = req.params;
@@ -90,7 +91,7 @@ exports.deletePayment = async (req, res) => {
         }
         res.status(200).json({ message: "Payment deleted successfully" });
     } catch (error) {
-        console.error(error);
+        console.error("Error in deletePayment:", error);
         res.status(500).json({ message: "Server error" });
     }
 };

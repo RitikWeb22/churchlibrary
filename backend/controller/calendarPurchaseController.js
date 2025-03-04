@@ -2,18 +2,30 @@ const CalendarPurchase = require("../models/CalendarPurchase");
 
 const createPurchase = async (req, res) => {
     try {
-        const { calendarId, calendarTitle, purchaserName, contact, price, paymentMethod, collectorName } = req.body;
+        const {
+            calendarId,
+            calendarTitle,
+            purchaserName,
+            contact,
+            price,
+            paymentMethod,
+            collectorName,
+        } = req.body;
         let screenshot = "";
         if (req.file) {
             screenshot = req.file.path;
         }
-        // Validate required fields
+
         if (!calendarId || !calendarTitle || !purchaserName || !contact || !price || !paymentMethod) {
             return res.status(400).json({ message: "Missing required fields" });
         }
         // For online payments, collectorName and screenshot are required.
         if (paymentMethod === "Online" && (!collectorName || !screenshot)) {
-            return res.status(400).json({ message: "Collector name and screenshot are required for online payments" });
+            return res
+                .status(400)
+                .json({
+                    message: "Collector name and screenshot are required for online payments",
+                });
         }
 
         const purchase = new CalendarPurchase({
@@ -29,7 +41,6 @@ const createPurchase = async (req, res) => {
         const savedPurchase = await purchase.save();
         res.status(201).json(savedPurchase);
     } catch (error) {
-        console.error("Error creating purchase:", error);
         res.status(500).json({ message: error.message });
     }
 };

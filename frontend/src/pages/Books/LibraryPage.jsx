@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 
 const LibraryPage = () => {
   const navigate = useNavigate();
@@ -36,9 +37,13 @@ const LibraryPage = () => {
   };
 
   return (
-    <div className="p-4">
-      {/* Alphabet Navigation */}
-      <h2 className="text-4xl py-3  font-semibold">Library Books</h2>
+    <motion.div
+      initial={{ opacity: 0, y: 50 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.8, ease: "easeOut" }}
+      className="p-4 min-h-screen"
+    >
+      <h2 className="text-4xl py-3 font-semibold text-center">Library Books</h2>
       <div className="flex flex-wrap justify-center gap-2 mb-4">
         {alphabets.map((letter) => (
           <button
@@ -54,8 +59,6 @@ const LibraryPage = () => {
           </button>
         ))}
       </div>
-
-      {/* Books List (only text links, no photos) */}
       <div className="w-full max-w-2xl mx-auto">
         {filteredBooks.length > 0 ? (
           <ul className="space-y-2">
@@ -76,7 +79,7 @@ const LibraryPage = () => {
           </p>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 };
 

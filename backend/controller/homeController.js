@@ -15,8 +15,6 @@ exports.getHomeConfig = async (req, res) => {
     }
 };
 
-// controller/homeController.js
-
 exports.updateHomeConfig = async (req, res) => {
     try {
         console.log("Request body:", req.body);
@@ -27,19 +25,32 @@ exports.updateHomeConfig = async (req, res) => {
             config = new HomeConfig();
         }
 
-        // If mainText, sections, etc. are sent in the body, update them
+        // Update textual fields
         if (req.body.mainText) {
             config.mainText = req.body.mainText;
         }
         if (req.body.sections) {
-            config.sections = JSON.parse(req.body.sections);
+            try {
+                config.sections = JSON.parse(req.body.sections);
+            } catch (err) {
+                config.sections = req.body.sections;
+            }
         }
         if (req.body.bannerTitle) {
             config.bannerTitle = req.body.bannerTitle;
         }
+        // Update latestUpdates field if provided.
+        if (req.body.latestUpdates) {
+            try {
+                // Expecting JSON string (array) from client
+                config.latestUpdates = JSON.parse(req.body.latestUpdates);
+            } catch (err) {
+                // If JSON parsing fails, assume a comma-separated string.
+                config.latestUpdates = req.body.latestUpdates.split(",").map(item => item.trim());
+            }
+        }
 
-        // Now handle file uploads
-        // For each file, store a path like "/uploads/filename.png"
+        // Handle file uploads
         if (req.files.lightBg) {
             const fileName = req.files.lightBg[0].filename;
             config.lightBg = "/uploads/" + fileName;
@@ -57,7 +68,6 @@ exports.updateHomeConfig = async (req, res) => {
         if (!config.eventCalendar) {
             config.eventCalendar = {};
         }
-
         if (req.files.eventCalendarPdf) {
             const fileName = req.files.eventCalendarPdf[0].filename;
             config.eventCalendar.pdf = "/uploads/" + fileName;

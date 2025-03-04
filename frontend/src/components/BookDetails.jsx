@@ -5,9 +5,9 @@ import { FaArrowRightArrowLeft, FaPlus, FaMinus } from "react-icons/fa6";
 import { useNavigate } from "react-router-dom";
 import "react-toastify/dist/ReactToastify.css";
 import "react-datepicker/dist/react-datepicker.css";
+import { purchaseBook } from "../services/api";
 
 const BookDetails = ({ book: initialBook }) => {
-  // Local state for the book details
   const [localBook, setLocalBook] = useState(initialBook);
   const [mainImage, setMainImage] = useState("");
 
@@ -26,22 +26,18 @@ const BookDetails = ({ book: initialBook }) => {
 
   const navigate = useNavigate();
 
-  // Update localBook when initialBook changes
   useEffect(() => {
     setLocalBook(initialBook);
   }, [initialBook]);
 
-  // Set main image from the book images if available
   useEffect(() => {
     if (localBook?.images && localBook.images.length > 0) {
       setMainImage(localBook.images[0]);
     }
   }, [localBook]);
 
-  // Compute lower-cased category for comparisons
   const categoryLower = (localBook?.category || "").trim().toLowerCase();
 
-  // Set default payment method based on category.
   useEffect(() => {
     if (categoryLower === "morning revival") {
       setPaymentMethod("cash");
@@ -50,7 +46,6 @@ const BookDetails = ({ book: initialBook }) => {
     }
   }, [categoryLower]);
 
-  // Compute maximum return date (1 month from borrow date)
   let computedMaxReturnDate = null;
   if (borrowDate) {
     const borrow = new Date(borrowDate);
@@ -86,20 +81,20 @@ const BookDetails = ({ book: initialBook }) => {
     }
   };
 
-  // Helper function to render stock message
   const renderStockMessage = () => {
-    if (categoryLower === "library" && localBook.stock === 0) {
-      return "In Circulation!";
-    }
-    if (categoryLower === "morning revival") {
-      return "Out of Stock!";
+    if (localBook.stock > 10) {
+      return null;
     }
     if (localBook.stock === 0) {
-      return "Out of Stock!";
-    } else if (localBook.stock <= 10) {
-      return "Hurry! Only a few copies left!";
+      if (categoryLower === "morning revival") {
+        return "Books are out of stocks!";
+      } else if (categoryLower === "library") {
+        return "Book is in circulation!";
+      } else {
+        return "Out of Stock!";
+      }
     }
-    return null;
+    return "Few copies are available!";
   };
 
   const stockMessage = renderStockMessage();
@@ -129,44 +124,21 @@ const BookDetails = ({ book: initialBook }) => {
       return;
     }
 
-    const formDataToSend = new FormData();
-    formDataToSend.append("bookId", localBook._id);
-    formDataToSend.append("bookName", localBook.title);
-    formDataToSend.append("userName", formData.yourName);
-    formDataToSend.append("contactNumber", formData.contactNumber);
-    formDataToSend.append("language", language);
-    formDataToSend.append("paymentMethod", paymentMethod);
-
-    if (paymentMethod !== "borrow") {
-      formDataToSend.append("price", localBook.price);
-      formDataToSend.append("quantity", quantity);
-    }
-
-    if (paymentMethod === "online") {
-      formDataToSend.append("collectorName", formData.collectorName);
-      if (file) {
-        formDataToSend.append("screenshot", file);
-      }
-    }
-
-    if (paymentMethod === "borrow") {
-      formDataToSend.append("borrowDate", borrowDate.toISOString());
-      formDataToSend.append("returnDate", returnDate.toISOString());
-    }
+    // Build purchaseData with the correct keys
+    const purchaseData = {
+      bookId: localBook._id,
+      bookTitle: localBook.title,
+      buyerName: formData.yourName, // will map to userName on the server
+      contact: formData.contactNumber, // will map to contactNumber on the server
+      language: language, // include language field
+      price: localBook.price,
+      paymentMethod: paymentMethod,
+    };
 
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/payments`,
-        {
-          method: "POST",
-          body: formDataToSend,
-        }
-      );
-
-      if (response.ok) {
+      const response = await purchaseBook(purchaseData, file);
+      if (response) {
         toast.success("Payment recorded successfully!");
-
-        // For a borrow transaction, update local stock immediately
         if (paymentMethod === "borrow") {
           setLocalBook((prev) => {
             if (!prev) return prev;
@@ -174,15 +146,13 @@ const BookDetails = ({ book: initialBook }) => {
             return { ...prev, stock: newStock };
           });
         }
-
-        // For purchase transactions, navigate back to books list
         if (paymentMethod === "cash" || paymentMethod === "online") {
-          navigate("/books");
         }
       } else {
         toast.error("Error recording payment.");
       }
     } catch (error) {
+      console.error("Payment submission error:", error);
       toast.error("Network error.");
     }
   };
@@ -194,7 +164,6 @@ const BookDetails = ({ book: initialBook }) => {
           categoryLower === "morning revival" ? "md:flex-row gap-6" : "gap-6"
         }`}
       >
-        {/* Image Gallery: Only show if category is "morning revival" */}
         {categoryLower === "morning revival" && (
           <div className="w-full md:w-1/2 flex flex-col items-center">
             <div className="w-full h-96 bg-gray-200 dark:bg-gray-700 rounded-xl overflow-hidden flex justify-center items-center">
@@ -226,8 +195,6 @@ const BookDetails = ({ book: initialBook }) => {
             </div>
           </div>
         )}
-
-        {/* Form Section */}
         <div
           className={`${
             categoryLower === "morning revival" ? "w-full md:w-1/2" : "w-full"
@@ -242,15 +209,12 @@ const BookDetails = ({ book: initialBook }) => {
           <p className="text-md text-gray-700 dark:text-gray-300">
             {localBook.description || "No description available."}
           </p>
-
           {stockMessage && (
             <div className="mt-4 text-lg font-semibold text-red-600 dark:text-red-400">
               {stockMessage}
             </div>
           )}
-
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Your Name */}
             <div className="space-y-2">
               <label className="block text-lg font-semibold text-gray-900 dark:text-gray-100">
                 Your Name:
@@ -267,7 +231,6 @@ const BookDetails = ({ book: initialBook }) => {
                 required
               />
             </div>
-            {/* Contact Number */}
             <div className="space-y-2">
               <label className="block text-lg font-semibold text-gray-900 dark:text-gray-100">
                 Contact Number:
@@ -284,7 +247,6 @@ const BookDetails = ({ book: initialBook }) => {
                 required
               />
             </div>
-            {/* Language */}
             <div className="space-y-2">
               <label className="block text-lg font-semibold text-gray-900 dark:text-gray-100">
                 Language:
@@ -299,8 +261,6 @@ const BookDetails = ({ book: initialBook }) => {
                 <option value="Hindi">Hindi</option>
               </select>
             </div>
-
-            {/* Payment Mode */}
             {categoryLower === "morning revival" ? (
               <div className="space-y-2">
                 <label className="block text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -320,8 +280,6 @@ const BookDetails = ({ book: initialBook }) => {
             ) : (
               <input type="hidden" name="paymentMethod" value="borrow" />
             )}
-
-            {/* Online Payment Additional Fields */}
             {paymentMethod === "online" && (
               <>
                 <div className="space-y-2">
@@ -357,8 +315,6 @@ const BookDetails = ({ book: initialBook }) => {
                 </div>
               </>
             )}
-
-            {/* Borrow Dates for non-morning revival library books */}
             {paymentMethod === "borrow" &&
               categoryLower !== "morning revival" && (
                 <div className="flex flex-col md:flex-row gap-6 items-center">
@@ -405,8 +361,6 @@ const BookDetails = ({ book: initialBook }) => {
                   </div>
                 </div>
               )}
-
-            {/* Quantity selection for purchases */}
             {paymentMethod !== "borrow" && (
               <div className="flex items-center gap-2 mt-4">
                 <label className="text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -429,7 +383,6 @@ const BookDetails = ({ book: initialBook }) => {
                 </button>
               </div>
             )}
-
             <button
               className="btn btn-primary w-full mt-4 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white font-semibold"
               onClick={handleSubmit}

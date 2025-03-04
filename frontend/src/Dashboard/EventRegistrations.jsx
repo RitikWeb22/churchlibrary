@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { FaPlus, FaEdit, FaTrash, FaEye } from "react-icons/fa";
-import { IoIosCloseCircleOutline } from "react-icons/io";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -31,13 +30,13 @@ const EventRegistrationManagement = () => {
   // Dynamic Fields State
   const [fields, setFields] = useState([]);
 
-  // Field Modal State (for add/edit dynamic field)
+  // Field Modal State
   const [isFieldModalOpen, setIsFieldModalOpen] = useState(false);
   const [editingField, setEditingField] = useState(null);
   const [fieldLabel, setFieldLabel] = useState("");
   const [fieldType, setFieldType] = useState("text");
 
-  // For normal dropdowns (array of strings)
+  // For dropdown fields
   const [dropdownOptions, setDropdownOptions] = useState([
     "Option 1",
     "Option 2",
@@ -45,15 +44,15 @@ const EventRegistrationManagement = () => {
   // For "Event" dropdowns (array of objects)
   const [eventOptions, setEventOptions] = useState([]);
 
-  // New state for deleting a dynamic field via modal
+  // Delete modal state
   const [isDeleteFieldModalOpen, setIsDeleteFieldModalOpen] = useState(false);
   const [fieldToDelete, setFieldToDelete] = useState(null);
 
-  // Registrations State
+  // Registrations
   const [registrations, setRegistrations] = useState([]);
   const [registrationsError, setRegistrationsError] = useState(null);
 
-  // Registration view modal state
+  // Registration view modal
   const [viewRegistration, setViewRegistration] = useState(null);
 
   useEffect(() => {
@@ -103,22 +102,20 @@ const EventRegistrationManagement = () => {
   const openFieldModal = (field = null) => {
     setIsFieldModalOpen(true);
     if (field) {
-      // Editing existing field
       setEditingField(field);
       setFieldLabel(field.label);
       setFieldType(field.type);
-      if (field.label === "Event" && field.type === "dropdown") {
-        setEventOptions(field.options || []);
-        setDropdownOptions([]);
-      } else if (field.type === "dropdown") {
-        setDropdownOptions(field.options || []);
-        setEventOptions([]);
-      } else {
-        setDropdownOptions([]);
-        setEventOptions([]);
+      if (field.type === "dropdown") {
+        if (field.label === "Event") {
+          setEventOptions(field.options || []);
+          setDropdownOptions([]);
+        } else {
+          setDropdownOptions(field.options || []);
+          setEventOptions([]);
+        }
       }
     } else {
-      // Creating new field
+      // New field
       setEditingField(null);
       setFieldLabel("");
       setFieldType("text");
@@ -144,12 +141,12 @@ const EventRegistrationManagement = () => {
     setDropdownOptions((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // For Event dropdown: add a new event object
+  // For Event dropdown
   const handleAddEventOption = () => {
     setEventOptions((prev) => [
       ...prev,
       {
-        name: `Event ${prev.length + 1}`,
+        name: "",
         date: "",
         placeType: "online",
         placeName: "",
@@ -175,16 +172,51 @@ const EventRegistrationManagement = () => {
       toast.error("Field label is required.");
       return;
     }
-    // Build final options array if dropdown
-    let finalOptions = [];
     if (fieldType === "dropdown") {
-      finalOptions = fieldLabel === "Event" ? eventOptions : dropdownOptions;
+      if (fieldLabel === "Event") {
+        if (!eventOptions || eventOptions.length === 0) {
+          toast.error("Please provide at least one event option.");
+          return;
+        }
+        for (let i = 0; i < eventOptions.length; i++) {
+          const evt = eventOptions[i];
+          if (
+            !evt.name.trim() ||
+            !evt.date ||
+            !evt.placeType.trim() ||
+            (evt.placeType === "physical" && !evt.placeName.trim()) ||
+            !evt.amount
+          ) {
+            toast.error(
+              `Please complete all details for event option ${i + 1}.`
+            );
+            return;
+          }
+        }
+      } else {
+        if (!dropdownOptions || dropdownOptions.length === 0) {
+          toast.error("Please provide at least one dropdown option.");
+          return;
+        }
+        const emptyOpts = dropdownOptions.filter((opt) => !opt.trim());
+        if (emptyOpts.length > 0) {
+          toast.error("Dropdown options cannot be blank.");
+          return;
+        }
+      }
     }
-    const payload = {
+
+    let payload = {
       label: fieldLabel,
       type: fieldType,
-      options: finalOptions,
     };
+
+    if (fieldType === "dropdown") {
+      const finalOptions =
+        fieldLabel === "Event" ? eventOptions : dropdownOptions;
+      payload.options = finalOptions;
+    }
+
     try {
       if (editingField) {
         await updateFormField(editingField._id, payload);
@@ -200,7 +232,7 @@ const EventRegistrationManagement = () => {
     }
   };
 
-  // New delete handlers for dynamic field using a confirmation modal
+  // Delete field
   const openDeleteFieldModal = (field) => {
     setFieldToDelete(field);
     setIsDeleteFieldModalOpen(true);
@@ -257,6 +289,7 @@ const EventRegistrationManagement = () => {
       toast.warn("No registrations to export.");
       return;
     }
+    // Build CSV
     const fieldLabels = fields.map((f) => f.label);
     let header = "S.No";
     fieldLabels.forEach((lbl) => {
@@ -264,12 +297,40 @@ const EventRegistrationManagement = () => {
     });
     header += ",CreatedAt\n";
     let csvContent = header;
+
     registrations.forEach((reg, index) => {
       const sNo = index + 1;
       let row = `${sNo}`;
       fieldLabels.forEach((lbl) => {
-        const val = reg.dynamicData?.[lbl] || "";
-        row += `,"${val}"`;
+        let cell = "";
+        const field = fields.find((f) => f.label === lbl);
+        const rawValue = reg.dynamicData?.[lbl];
+        if (field && field.label === "Event") {
+          let eventData = rawValue;
+          if (typeof rawValue === "string") {
+            try {
+              eventData = JSON.parse(rawValue);
+            } catch (e) {
+              eventData = null;
+            }
+          }
+          if (eventData && typeof eventData === "object") {
+            cell = `Name: ${eventData.name || ""}; Date: ${
+              eventData.date
+                ? new Date(eventData.date).toLocaleDateString()
+                : ""
+            }; Place: ${
+              eventData.placeType === "physical"
+                ? eventData.placeName
+                : eventData.placeType
+            }; Amount: ${eventData.amount || ""}`;
+          } else {
+            cell = rawValue || "";
+          }
+        } else {
+          cell = rawValue || "";
+        }
+        row += `,"${cell}"`;
       });
       const created = reg.createdAt
         ? new Date(reg.createdAt).toISOString().slice(0, 10)
@@ -277,6 +338,7 @@ const EventRegistrationManagement = () => {
       row += `,"${created}"\n`;
       csvContent += row;
     });
+
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -377,7 +439,7 @@ const EventRegistrationManagement = () => {
         ))}
       </div>
 
-      {/* Reusable Edit Modal for Dynamic Field */}
+      {/* Edit Modal for Dynamic Field */}
       {isFieldModalOpen && (
         <EditModal
           title={editingField ? "Edit Dynamic Field" : "Add Dynamic Field"}
@@ -416,6 +478,7 @@ const EventRegistrationManagement = () => {
               <option value="dropdown">Dropdown</option>
             </select>
           </div>
+          {/* For normal dropdown fields */}
           {fieldType === "dropdown" && fieldLabel !== "Event" && (
             <div className="mb-4">
               <label className="block font-semibold mb-1">
@@ -451,10 +514,11 @@ const EventRegistrationManagement = () => {
               </button>
             </div>
           )}
+          {/* For Event dropdown fields */}
           {fieldType === "dropdown" && fieldLabel === "Event" && (
             <div className="mb-4">
               <label className="block font-semibold mb-1">
-                Event Options (name, date, place, etc.):
+                Event Options (name, date, place, amount):
               </label>
               {eventOptions.map((evt, idx) => (
                 <div
@@ -547,7 +611,6 @@ const EventRegistrationManagement = () => {
         </EditModal>
       )}
 
-      {/* Delete Confirmation Modal for Dynamic Field */}
       {isDeleteFieldModalOpen && (
         <DeleteConfirmModal
           message={`Are you sure you want to delete dynamic field "${fieldToDelete?.label}"?`}
@@ -556,7 +619,7 @@ const EventRegistrationManagement = () => {
         />
       )}
 
-      {/* SECTION 3: REGISTRATIONS */}
+      {/* Registrations */}
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-3xl font-bold">Registrations</h1>
         <button className="btn btn-secondary" onClick={exportToExcel}>
@@ -566,31 +629,80 @@ const EventRegistrationManagement = () => {
       {registrationsError && (
         <p className="text-red-500 mb-4">Error: {registrationsError}</p>
       )}
+
+      {/* Add table-fixed and set widths for columns here */}
       <div className="overflow-x-auto bg-white dark:bg-gray-800 p-4 rounded shadow">
-        <table className="table w-full">
+        <table className="table table-fixed w-full">
           <thead>
             <tr>
-              <th>S.No</th>
+              {/* Set a smaller width for S.No */}
+              <th className="w-16">S.No</th>
+              {/* For each dynamic field, assign a moderate width (e.g., w-40). Adjust as needed. */}
               {fields.map((f) => (
-                <th key={f._id}>{f.label}</th>
+                <th key={f._id} className="w-40">
+                  {f.label}
+                </th>
               ))}
-              <th>Created At</th>
-              <th className="text-right">Actions</th>
+              {/* Created At column */}
+              <th className="w-40">Created At</th>
+              {/* Actions column */}
+              <th className="text-right w-40">Actions</th>
             </tr>
           </thead>
           <tbody>
             {registrations.map((reg, index) => (
               <tr key={reg._id}>
                 <td>{index + 1}</td>
-                {fields.map((f) => (
-                  <td key={f._id}>{reg.dynamicData?.[f.label] || ""}</td>
-                ))}
+                {fields.map((f) => {
+                  const rawValue = reg.dynamicData?.[f.label];
+                  let cellContent = "";
+                  // If it's "Event", parse or read the object
+                  if (f.label === "Event") {
+                    let eventData = rawValue;
+                    if (typeof rawValue === "string") {
+                      try {
+                        eventData = JSON.parse(rawValue);
+                      } catch (e) {
+                        eventData = null;
+                      }
+                    }
+                    if (eventData && typeof eventData === "object") {
+                      cellContent = (
+                        <>
+                          <div>
+                            <strong>Name:</strong> {eventData.name || ""}
+                          </div>
+                          <div>
+                            <strong>Date:</strong>{" "}
+                            {eventData.date
+                              ? new Date(eventData.date).toLocaleDateString()
+                              : ""}
+                          </div>
+                          <div>
+                            <strong>Place:</strong>{" "}
+                            {eventData.placeType === "physical"
+                              ? eventData.placeName
+                              : eventData.placeType}
+                          </div>
+                          <div>
+                            <strong>Amount:</strong> {eventData.amount || ""}
+                          </div>
+                        </>
+                      );
+                    } else {
+                      cellContent = rawValue || "";
+                    }
+                  } else {
+                    cellContent = rawValue || "";
+                  }
+                  return <td key={f._id}>{cellContent}</td>;
+                })}
                 <td>
                   {reg.createdAt
                     ? new Date(reg.createdAt).toISOString().slice(0, 10)
                     : ""}
                 </td>
-                <td className="flex justify-end gap-2">
+                <td className="flex  justify-end gap-2">
                   <button
                     className="btn btn-sm btn-info"
                     onClick={() => handleViewRegistration(reg)}
@@ -617,15 +729,48 @@ const EventRegistrationManagement = () => {
         </table>
       </div>
 
-      {/* Reusable View Modal for Registration Details */}
+      {/* View Modal for Registration Details */}
       {viewRegistration && (
         <ViewModal title="Registration Details" onClose={closeViewModal}>
-          {fields.map((f) => (
-            <p key={f._id}>
-              <strong>{f.label}:</strong>{" "}
-              {viewRegistration.dynamicData?.[f.label] || ""}
-            </p>
-          ))}
+          {fields.map((f) => {
+            const rawValue = viewRegistration.dynamicData?.[f.label];
+            if (f.label === "Event") {
+              let eventData = rawValue;
+              if (typeof rawValue === "string") {
+                try {
+                  eventData = JSON.parse(rawValue);
+                } catch (e) {
+                  eventData = null;
+                }
+              }
+              if (eventData && typeof eventData === "object") {
+                return (
+                  <p key={f._id}>
+                    <strong>{f.label}:</strong> Name: {eventData.name || ""},
+                    Date:{" "}
+                    {eventData.date
+                      ? new Date(eventData.date).toLocaleDateString()
+                      : ""}
+                    , Place:{" "}
+                    {eventData.placeType === "physical"
+                      ? eventData.placeName
+                      : eventData.placeType}
+                    , Amount: {eventData.amount || ""}
+                  </p>
+                );
+              }
+              return (
+                <p key={f._id}>
+                  <strong>{f.label}:</strong> {rawValue || ""}
+                </p>
+              );
+            }
+            return (
+              <p key={f._id}>
+                <strong>{f.label}:</strong> {rawValue || ""}
+              </p>
+            );
+          })}
           <p>
             <strong>Created At:</strong>{" "}
             {viewRegistration.createdAt

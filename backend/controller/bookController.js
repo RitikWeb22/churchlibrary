@@ -25,8 +25,6 @@ exports.getBookById = async (req, res) => {
 exports.createBook = async (req, res) => {
     try {
         const { title, category, description, price, stock } = req.body;
-
-        // Because of multer-storage-cloudinary, each uploaded file has a .path => Cloudinary URL
         const images = (req.files || []).map((file) => file.path);
 
         const book = await Book.create({
@@ -40,7 +38,6 @@ exports.createBook = async (req, res) => {
 
         return res.status(201).json(book);
     } catch (err) {
-        console.error("Error in createBook:", err);
         return res.status(500).json({ error: err.message });
     }
 };
@@ -48,38 +45,29 @@ exports.createBook = async (req, res) => {
 // Update an existing book by ID with image upload support
 exports.updateBook = async (req, res) => {
     try {
-        // Convert numeric fields if needed
         if (req.body.price) req.body.price = Number(req.body.price);
         if (req.body.stock) req.body.stock = Number(req.body.stock);
 
-        // 1. Fetch the existing book
         const existingBook = await Book.findById(req.params.id);
         if (!existingBook) {
             return res.status(404).json({ error: "Book not found" });
         }
 
-        // 2. If new images are uploaded, read their Cloudinary URLs
         let newImages = [];
         if (req.files && req.files.length > 0) {
             newImages = req.files.map((file) => file.path);
         }
-
-        // 3. Decide whether to overwrite or merge images
-        // Example: merge existing images with new ones
         existingBook.images = [...existingBook.images, ...newImages];
 
-        // 4. Update other fields
         existingBook.title = req.body.title ?? existingBook.title;
         existingBook.category = req.body.category ?? existingBook.category;
         existingBook.description = req.body.description ?? existingBook.description;
         existingBook.price = req.body.price ?? existingBook.price;
         existingBook.stock = req.body.stock ?? existingBook.stock;
 
-        // 5. Save updated book
         const updatedBook = await existingBook.save();
         return res.json(updatedBook);
     } catch (err) {
-        console.error("Error in updateBook:", err);
         return res.status(500).json({ error: err.message });
     }
 };
@@ -126,14 +114,14 @@ exports.addCategory = async (req, res) => {
 exports.removeCategory = async (req, res) => {
     try {
         const categoryName = req.params.name;
-        // Attempt to find & delete the category by its "name"
         const category = await Category.findOneAndDelete({ name: categoryName });
         if (!category) {
             return res.status(404).json({ error: "Category not found" });
         }
-        return res.json({ message: `Category "${categoryName}" removed successfully.` });
+        return res.json({
+            message: `Category "${categoryName}" removed successfully.`,
+        });
     } catch (err) {
-        console.error("Error in removeCategory:", err);
         return res.status(500).json({ error: err.message });
     }
 };
@@ -141,7 +129,6 @@ exports.removeCategory = async (req, res) => {
 // Standalone file upload endpoint (if needed)
 exports.uploadFile = async (req, res) => {
     try {
-        // With multer-storage-cloudinary, req.file.path is the Cloudinary URL
         return res.json({ url: req.file.path });
     } catch (err) {
         return res.status(500).json({ error: err.message });
@@ -168,7 +155,6 @@ exports.importBooks = async (req, res) => {
         if (!Array.isArray(booksData)) {
             return res.status(400).json({ message: "Expected an array of books" });
         }
-        // Optionally do data validation here
         const result = await Book.insertMany(booksData);
         return res.status(201).json({
             message: "Books imported successfully",

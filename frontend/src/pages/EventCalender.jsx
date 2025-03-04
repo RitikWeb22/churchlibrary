@@ -89,13 +89,6 @@ const EventCalendar = () => {
       ) : (
         <div className="text-center text-gray-500">No PDF available.</div>
       )}
-
-      {/* Refresh Button */}
-      <div className="mt-4 text-center">
-        <button onClick={fetchEventData} className="btn btn-primary">
-          Refresh Event Details
-        </button>
-      </div>
     </div>
   );
 };

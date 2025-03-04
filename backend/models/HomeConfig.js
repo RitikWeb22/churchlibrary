@@ -6,14 +6,14 @@ const homeConfigSchema = new mongoose.Schema(
         sections: { type: Array, default: [] },
         lightBg: { type: String, default: "" },
         darkBg: { type: String, default: "" },
-        // New fields for home page banner
         bannerTitle: { type: String, default: "" },
         banner: { type: String, default: "" },
-        // Event calendar configuration
         eventCalendar: {
             pdf: { type: String, default: "" },
             banner: { type: String, default: "" },
         },
+        // New field for marquee latest updates
+        latestUpdates: { type: [String], default: [] },
     },
     { timestamps: true }
 );

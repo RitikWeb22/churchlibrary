@@ -185,9 +185,9 @@ const UserManagement = () => {
         <button className="btn btn-info" onClick={openAddPhoneModal}>
           + Add Phone Number
         </button>
-        <button className="btn btn-primary" onClick={openAddUserModal}>
+        {/* <button className="btn btn-primary" onClick={openAddUserModal}>
           + Add User
-        </button>
+        </button> */}
       </div>
 
       {loading ? (

@@ -45,7 +45,7 @@ const PaymentManagement = () => {
   const fetchPayments = async () => {
     try {
       const url = `${import.meta.env.VITE_API_BASE_URL}/payments`;
-      const response = await fetch(url);
+      const response = await fetch(url, { credentials: "include" });
       const data = await response.json();
       setTransactions(data);
     } catch (error) {
@@ -127,7 +127,7 @@ const PaymentManagement = () => {
   );
   const totalBorrowPages = Math.ceil(borrowTransactions.length / itemsPerPage);
 
-  // CSV Export functions
+  // CSV Export functions (unchanged)
   const downloadCSV = (csvData, filename) => {
     const blob = new Blob([csvData], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
@@ -277,33 +277,7 @@ const PaymentManagement = () => {
     setShowInvoiceModal(true);
   };
 
-  // Edit modal functions (stub implementations)
-  const openEditPaymentModal = (item) => {
-    setEditingPayment(item);
-    setEditBookName(item.bookName);
-    setEditUserName(item.userName);
-    setEditContactNumber(item.contactNumber);
-    setEditLanguage(item.language);
-    setEditQuantity(item.quantity);
-    setEditPrice(item.price);
-    setEditPaymentMethod(item.paymentMethod);
-    setEditCollectorName(item.collectorName || "");
-    setIsEditPaymentModalOpen(true);
-  };
-
-  const closeEditPaymentModal = () => {
-    setEditingPayment(null);
-    setIsEditPaymentModalOpen(false);
-  };
-
-  const handleEditPaymentSubmit = (e) => {
-    e.preventDefault();
-    // TODO: Implement API update call for editing the payment
-    toast.success("Payment updated successfully!");
-    closeEditPaymentModal();
-  };
-
-  // Delete modal functions (stub implementations)
+  // Delete modal functions
   const openDeletePaymentModal = (paymentId) => {
     setPaymentToDelete(paymentId);
     setIsDeletePaymentModalOpen(true);
@@ -314,10 +288,51 @@ const PaymentManagement = () => {
     setIsDeletePaymentModalOpen(false);
   };
 
-  const handleDeletePayment = () => {
-    // TODO: Implement API call to delete the payment
-    toast.success("Payment deleted successfully!");
-    closeDeletePaymentModal();
+  // Helper function to fetch CSRF token
+  const getCsrfToken = async () => {
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/csrf-token`,
+        { credentials: "include" }
+      );
+      if (!res.ok) throw new Error("Failed to fetch CSRF token");
+      const data = await res.json();
+      return data.csrfToken;
+    } catch (error) {
+      console.error("CSRF token error:", error);
+      return null;
+    }
+  };
+
+  // Updated delete payment handler including CSRF token
+  const handleDeletePayment = async () => {
+    try {
+      const csrfToken = await getCsrfToken();
+      if (!csrfToken) {
+        toast.error("Could not retrieve CSRF token");
+        return;
+      }
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/payments/${paymentToDelete}`,
+        {
+          method: "DELETE",
+          headers: { "x-csrf-token": csrfToken },
+          credentials: "include",
+        }
+      );
+      if (response.ok) {
+        toast.success("Payment deleted successfully!");
+        setTransactions((prev) =>
+          prev.filter((payment) => payment._id !== paymentToDelete)
+        );
+        closeDeletePaymentModal();
+      } else {
+        toast.error("Failed to delete payment.");
+      }
+    } catch (error) {
+      toast.error("Error deleting payment.");
+      console.error("Payment delete error:", error);
+    }
   };
 
   return (
@@ -463,12 +478,6 @@ const PaymentManagement = () => {
                     </td>
                     <td className="flex gap-2">
                       <button
-                        className="btn btn-sm btn-warning"
-                        onClick={() => openEditPaymentModal(item)}
-                      >
-                        <FaEdit /> Edit
-                      </button>
-                      <button
                         className="btn btn-sm btn-error"
                         onClick={() => openDeletePaymentModal(item._id)}
                       >
@@ -607,21 +616,14 @@ const PaymentManagement = () => {
         </ViewModal>
       )}
 
-      {/* Invoice Modal using InvoiceTemplate with native window.print() */}
+      {/* Invoice Modal using InvoiceTemplate */}
       {showInvoiceModal && invoiceData && (
         <div className="modal modal-open">
           <div className="modal-box max-w-4xl">
-            {/* Wrap invoice content with the invoiceContainer id */}
             <div id="invoiceContainer">
               <InvoiceTemplate invoiceData={invoiceData} />
             </div>
             <div className="modal-action flex gap-2">
-              {/* <button
-                className="btn btn-primary"
-                onClick={() => window.print()}
-              >
-                Print Invoice
-              </button> */}
               <button
                 className="btn btn-outline"
                 onClick={() => setShowInvoiceModal(false)}
@@ -640,6 +642,7 @@ const PaymentManagement = () => {
           onSubmit={handleEditPaymentSubmit}
           onCancel={closeEditPaymentModal}
         >
+          {/* Form fields for editing */}
           <div className="mb-4">
             <label className="font-semibold">Book Name:</label>
             <input
@@ -728,7 +731,12 @@ const PaymentManagement = () => {
         />
       )}
 
-      <ToastContainer position="top-right" autoClose={5000} />
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        theme="colored"
+        style={{ zIndex: 9999 }}
+      />
     </div>
   );
 };

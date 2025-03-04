@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import Footer from "./Footer";
 // import "./Marquee.css"; // optional: define verticalMarquee animation here
 
 const AnnouncementsPage = () => {
@@ -267,9 +266,6 @@ const AnnouncementsPage = () => {
           </div>
         </div>
       </main>
-
-      {/* Footer */}
-      <Footer />
 
       {/* Read More Modal */}
       {selectedAnnouncement && (

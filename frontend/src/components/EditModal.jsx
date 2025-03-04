@@ -10,8 +10,7 @@ const EditModal = ({ title, children, onSubmit, onCancel }) => {
         </h2>
         <form
           onSubmit={(e) => {
-            e.preventDefault();
-            onSubmit();
+            onSubmit(e);
           }}
         >
           {children}

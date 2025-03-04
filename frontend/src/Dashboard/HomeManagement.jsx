@@ -4,9 +4,7 @@ import "react-toastify/dist/ReactToastify.css";
 import { getHomeConfig, updateHomeConfig } from "../services/api";
 
 const HomeManagementModern = () => {
-  // ----------------------------------
-  // 1. Base URL for static files
-  // ----------------------------------
+  // Base URL for static files
   const baseURL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
   // Tab state: "home" for welcome text, banner & sections; "event" for calendar management
@@ -15,6 +13,9 @@ const HomeManagementModern = () => {
   // Home configuration states
   const [mainText, setMainText] = useState("Welcome to the Church Life");
   const [sections, setSections] = useState([]);
+
+  // Latest updates for marquee input (admin can update this separately)
+  const [latestUpdatesInput, setLatestUpdatesInput] = useState("");
 
   // Home Banner states
   const [bannerTitle, setBannerTitle] = useState("");
@@ -38,16 +39,10 @@ const HomeManagementModern = () => {
   const [localEventCalendarBannerPreview, setLocalEventCalendarBannerPreview] =
     useState(null);
 
-  // ----------------------------------
-  // 2. Utility to prepend baseURL if needed
-  // ----------------------------------
+  // Utility to prepend baseURL if needed
   const makeFullUrl = (path) => {
     if (!path) return "";
-    // If path already starts with http, return as is
-    if (path.startsWith("http://") || path.startsWith("https://")) {
-      return path;
-    }
-    // Otherwise, prepend baseURL
+    if (path.startsWith("http://") || path.startsWith("https://")) return path;
     return baseURL + path;
   };
 
@@ -57,33 +52,26 @@ const HomeManagementModern = () => {
       try {
         const data = await getHomeConfig();
 
-        // Main welcome text
         setMainText(data.mainText || "Welcome to the Church Life");
 
-        // Sections: if they contain images, prepend base URL if necessary
         if (Array.isArray(data.sections)) {
-          const mappedSections = data.sections.map((section) => {
-            return {
-              ...section,
-              image: makeFullUrl(section.image),
-            };
-          });
+          const mappedSections = data.sections.map((section) => ({
+            ...section,
+            image: makeFullUrl(section.image),
+          }));
           setSections(mappedSections);
         }
 
-        // Home banner
         if (data.bannerTitle) setBannerTitle(data.bannerTitle);
+        if (data.banner) setBannerImagePreview(makeFullUrl(data.banner));
 
-        // If the banner is a partial path, build full URL
-        if (data.banner) {
-          setBannerImagePreview(makeFullUrl(data.banner));
-        }
-
-        // Event Calendar
         if (data.eventCalendar) {
-          // Convert partial paths to full URLs
           setPreviewEventCalendarPdf(makeFullUrl(data.eventCalendar.pdf));
           setPreviewEventCalendarBanner(makeFullUrl(data.eventCalendar.banner));
+        }
+
+        if (data.latestUpdates && Array.isArray(data.latestUpdates)) {
+          setLatestUpdatesInput(data.latestUpdates.join(", "));
         }
       } catch (error) {
         console.error("Failed to load home configuration", error);
@@ -122,23 +110,17 @@ const HomeManagementModern = () => {
       setBannerImagePreview(objectUrl);
       return () => URL.revokeObjectURL(objectUrl);
     }
-    // If user clears the file, revert to existing preview (if any)
   }, [bannerImage]);
 
-  // ----------------------------------
-  // 3. Save home configuration
-  // ----------------------------------
+  // Save home configuration (excluding latest updates)
   const handleSaveHome = async () => {
     const configData = {
       mainText,
       sections,
       bannerTitle,
     };
-    // Include banner file if provided
     const files = {};
-    if (bannerImage) {
-      files.banner = bannerImage;
-    }
+    if (bannerImage) files.banner = bannerImage;
     try {
       await updateHomeConfig(configData, files);
       toast.success("Home configuration updated successfully!");
@@ -148,20 +130,32 @@ const HomeManagementModern = () => {
     }
   };
 
-  // ----------------------------------
-  // 4. Save event calendar configuration
-  // ----------------------------------
+  // Save latest updates (marquee text) separately
+  const handleSaveLatestUpdates = async () => {
+    const updatesArray = latestUpdatesInput
+      .split(",")
+      .map((item) => item.trim())
+      .filter((item) => item);
+    const configData = { latestUpdates: updatesArray };
+    try {
+      await updateHomeConfig(configData, {});
+      toast.success("Latest updates updated successfully!");
+    } catch (error) {
+      console.error("Error updating latest updates:", error);
+      toast.error("Error updating latest updates. Please try again.");
+    }
+  };
+
+  // Save event calendar configuration
   const handleEventCalendarSave = async () => {
     const configData = {};
     const files = {
       eventCalendarPdf,
       eventCalendarBanner,
     };
-
     try {
       await updateHomeConfig(configData, files);
       toast.success("Event Calendar updated successfully!");
-      // Refresh the preview data from backend
       const updatedData = await getHomeConfig();
       if (updatedData.eventCalendar) {
         setPreviewEventCalendarPdf(makeFullUrl(updatedData.eventCalendar.pdf));
@@ -169,7 +163,6 @@ const HomeManagementModern = () => {
           makeFullUrl(updatedData.eventCalendar.banner)
         );
       }
-      // Clear file selections after update
       setEventCalendarPdf(null);
       setEventCalendarBanner(null);
       setLocalEventCalendarBannerPreview(null);
@@ -179,9 +172,7 @@ const HomeManagementModern = () => {
     }
   };
 
-  // ----------------------------------
-  // 5. Add or remove sections
-  // ----------------------------------
+  // Add or remove sections
   const addSection = () => {
     if (!newSectionTitle.trim() || !newSectionText.trim()) {
       toast.error("Please enter both title and text for the new section.");
@@ -191,8 +182,6 @@ const HomeManagementModern = () => {
       id: Date.now(),
       title: newSectionTitle,
       text: newSectionText,
-      // For local preview, store the objectUrl in memory
-      // The actual final path is determined upon saving to the server
       image: newSectionImagePreview || null,
     };
     setSections([...sections, newSection]);
@@ -208,9 +197,6 @@ const HomeManagementModern = () => {
     toast.info("Section removed.");
   };
 
-  // ----------------------------------
-  // 6. Render
-  // ----------------------------------
   return (
     <div className="p-6 max-w-6xl mx-auto bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
       <h1 className="text-4xl font-bold mb-6 text-center">
@@ -242,9 +228,9 @@ const HomeManagementModern = () => {
       </div>
 
       {activeTab === "home" && (
-        <div>
-          {/* Main Welcome Text */}
-          <div className="mb-8">
+        <div className="space-y-8">
+          {/* Home Configuration */}
+          <div>
             <h2 className="text-2xl font-semibold mb-2">Main Welcome Text</h2>
             <textarea
               className="w-full p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
@@ -253,20 +239,46 @@ const HomeManagementModern = () => {
               onChange={(e) => setMainText(e.target.value)}
               placeholder="Enter the welcome text"
             ></textarea>
+            <div className="mt-4">
+              <button
+                className="btn btn-success px-10"
+                onClick={handleSaveHome}
+              >
+                Save Home Configuration
+              </button>
+            </div>
           </div>
 
-          <button className="btn btn-success px-10" onClick={handleSaveHome}>
-            Save Home Configuration
-          </button>
+          {/* Latest Updates (Marquee Text) */}
+          <div>
+            <h2 className="text-2xl font-semibold mb-2">
+              Latest Updates (comma separated)
+            </h2>
+            <input
+              type="text"
+              className="w-full p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
+              value={latestUpdatesInput}
+              onChange={(e) => setLatestUpdatesInput(e.target.value)}
+              placeholder="e.g. New sermon uploaded!, Weekly newsletter released!, Upcoming event: Community Picnic"
+            />
+            <div className="mt-4">
+              <button
+                className="btn btn-info px-10"
+                onClick={handleSaveLatestUpdates}
+              >
+                Save Latest Updates
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
       {activeTab === "event" && (
-        <div>
+        <div className="space-y-8">
           <h2 className="text-2xl font-semibold mb-4">
             Event Calendar Management
           </h2>
-          <div className="space-y-4 mb-6">
+          <div className="space-y-4">
             <div>
               <label className="block mb-1 font-medium">
                 Upload Event Calendar PDF:
@@ -282,28 +294,7 @@ const HomeManagementModern = () => {
                 className="file-input file-input-bordered w-full dark:bg-gray-700"
               />
             </div>
-            <div>
-              <label className="block mb-1 font-medium">
-                Upload Event Calendar Banner:
-              </label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  if (e.target.files && e.target.files[0]) {
-                    setEventCalendarBanner(e.target.files[0]);
-                  }
-                }}
-                className="file-input file-input-bordered w-full dark:bg-gray-700"
-              />
-              {localEventCalendarBannerPreview && (
-                <img
-                  src={localEventCalendarBannerPreview}
-                  alt="Local Banner Preview"
-                  className="mt-2 w-48 h-auto object-cover rounded"
-                />
-              )}
-            </div>
+
             <button
               className="btn btn-warning"
               onClick={handleEventCalendarSave}
@@ -315,17 +306,6 @@ const HomeManagementModern = () => {
             <h3 className="text-xl font-semibold mb-2">
               Event Calendar Preview
             </h3>
-            <div className="mb-4">
-              {previewEventCalendarBanner ? (
-                <img
-                  src={previewEventCalendarBanner}
-                  alt="Event Calendar Banner"
-                  className="w-full max-w-md h-auto object-cover rounded-lg shadow-md"
-                />
-              ) : (
-                <p className="text-gray-500">No banner available.</p>
-              )}
-            </div>
             <div className="w-full max-w-md" style={{ height: "300px" }}>
               {previewEventCalendarPdf ? (
                 <iframe

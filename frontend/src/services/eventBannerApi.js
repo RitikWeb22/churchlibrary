@@ -8,7 +8,7 @@ export async function getEventBanner() {
         const res = await axios.get(`${BASE_URL}/event-banner`);
         return res.data;
     } catch (error) {
-        console.error("Error fetching event banner:", error);
+
         throw error;
     }
 }
@@ -26,7 +26,7 @@ export async function updateEventBanner(title, imageFile) {
 
         return res.data;
     } catch (error) {
-        console.error("Error updating event banner:", error);
+
         throw error;
     }
 }

@@ -3,9 +3,10 @@ import {
   BrowserRouter as Router,
   Routes,
   Route,
-  Navigate,
+  useLocation,
 } from "react-router-dom";
 import Header from "./components/Header";
+import Footer from "./components/Footer";
 import Home from "./pages/Home";
 import LibraryPage from "./pages/Books/LibraryPage";
 import ChurchEventsPage from "./components/ChurchEvents&calender";
@@ -30,11 +31,14 @@ const NotAuthorized = () => (
   </div>
 );
 
-// ErrorPage for unknown routes
+// Wrap your main content in a component where you can use useLocation.
+const AppContent = () => {
+  const location = useLocation();
+  // Check if the current pathname starts with '/dashboard'
+  const isAdminRoute = location.pathname.startsWith("/dashboard");
 
-const App = () => {
   return (
-    <Router>
+    <>
       <Header />
       <Routes>
         {/* Public Routes */}
@@ -43,7 +47,6 @@ const App = () => {
         <Route path="/library" element={<LibraryPage />} />
         <Route path="/calendar-events" element={<ChurchEventsPage />} />
         <Route path="/event-calender" element={<EventCelender />} />
-
         <Route
           path="/event-register-form"
           element={<MergedRegistrationForm />}
@@ -53,19 +56,25 @@ const App = () => {
         <Route path="/books/:id" element={<BookDetailPage />} />
         <Route path="/books/category/:category" element={<CategoryPage />} />
         <Route path="/church-calender" element={<ChurchCalenderMain />} />
-        {/* <Route path="/hymns" element={<Hymns />} /> */}
-
         {/* Protected Dashboard Routes (Admin only) */}
         <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
           <Route path="/dashboard/*" element={<Dashboard />} />
         </Route>
-
         {/* Not Authorized */}
         <Route path="/not-authorized" element={<NotAuthorized />} />
-
         {/* Fallback Error Page */}
         <Route path="*" element={<ErrorPage />} />
       </Routes>
+      {/* Render Footer only if NOT on an admin route */}
+      {!isAdminRoute && <Footer />}
+    </>
+  );
+};
+
+const App = () => {
+  return (
+    <Router>
+      <AppContent />
     </Router>
   );
 };
